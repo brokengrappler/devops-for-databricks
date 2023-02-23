@@ -69,8 +69,8 @@ def manage_dbrks_cluster_state(cluster_id):
     '''
     Provide status update on cluster creation based on cluster state
     returned from get_dbriks_cluster_info
-    :param cluster_id:
-    :return:
+    :param
+        cluster_id:
     '''
     await_cluster = True
     cluster_restarted = False
