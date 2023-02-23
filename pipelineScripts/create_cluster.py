@@ -1,83 +1,105 @@
-import requests  # noqa: E902
+import requests
 import time
 import os
 import json
 
 DBRKS_REQ_HEADERS = {
-    'Authorization': 'Bearer ' + os.environ['DBRKS_BEARER_TOKEN'],
-    'X-Databricks-Azure-Workspace-Resource-Id': '/subscriptions/'+ os.environ['DBRKS_SUBSCRIPTION_ID'] +'/resourceGroups/'+ os.environ['DBRKS_RESOURCE_GROUP'] +'/providers/Microsoft.Databricks/workspaces/' + os.environ['DBRKS_WORKSPACE_NAME'],
-    'X-Databricks-Azure-SP-Management-Token': os.environ['DBRKS_MANAGEMENT_TOKEN']}
+    'Authorization': 'Bearer ' + os.environ['DATABRICKS_TOKEN']
+}
 
-print("DBRKS_REQ_HEADERS", DBRKS_REQ_HEADERS)
 
-def create_cluster():
+def create_cluster(config_json):
+    '''
+    Send post to create cluster on Databricks
+    :param config_json:
+    :return:
+        json object of cluster id (ex format {'cluster_id': '0221-141820-74a5ejmc'})
+    '''
     DBRKS_START_ENDPOINT = 'api/2.0/clusters/create'
-    postjson = """{
-     "cluster_name": "devops-cluster",
-     "spark_version": "7.3.x-scala2.12",
-    "node_type_id": "Standard_DS3_v2",
-    "autotermination_minutes": 10,
-    "autoscale" : {
-      "min_workers": 1,
-      "max_workers": 3
-    }
-  }"""
-
-    response = requests.post("https://"+os.environ['DBRKS_INSTANCE']+".azuredatabricks.net/" + DBRKS_START_ENDPOINT, headers=DBRKS_REQ_HEADERS, json=json.loads(postjson))
+    with open(f'./cluster_configs/{config_json}', "r") as stream:
+        cluster_config = json.load(stream)
+    response = requests.post(
+        f"{os.environ['DATABRICKS_HOST']}{DBRKS_START_ENDPOINT}",
+        headers=DBRKS_REQ_HEADERS,
+        data=json.dumps(cluster_config)
+    )
     if response.status_code != 200:
-        raise Exception(response.text)
-    
-    os.environ["DBRKS_CLUSTER_ID"] = response.json()["cluster_id"]    
-    print("##vso[task.setvariable variable=DBRKS_CLUSTER_ID;isOutput=true;]{b}".format(b=os.environ["DBRKS_CLUSTER_ID"]))
-    
-    env_file = os.getenv('GITHUB_ENV')
-
-    with open(env_file, "a") as myfile:
-      myfile.write(f"DBRKS_CLUSTER_ID={os.environ['DBRKS_CLUSTER_ID']}")
+        raise Exception(response.status_code)
+    print(response.json())
+    return response.json()
        
 
 def list_clusters():
+    ### not used yet ###
     DBRKS_ENDPOINT = 'api/2.0/clusters/list'
-    response = requests.get("https://"+os.environ['DBRKS_INSTANCE']+".azuredatabricks.net/" + DBRKS_ENDPOINT, headers=DBRKS_REQ_HEADERS)
+    response = requests.get(
+        f"{os.environ['DATABRICKS_HOST']}{DBRKS_ENDPOINT}",
+        headers=DBRKS_REQ_HEADERS
+    )
     if response.status_code != 200:
         raise Exception(response.content)
     else:
         return response.json()
 
-def get_dbrks_cluster_info():
-    DBRKS_CLUSTER_ID = {'cluster_id': os.environ["DBRKS_CLUSTER_ID"]}
+
+def get_dbrks_cluster_info(DBRKS_CLUSTER_ID):
+    '''
+
+    :param DBRKS_CLUSTER_ID:
+    :return:
+    '''
     DBRKS_INFO_ENDPOINT = 'api/2.0/clusters/get'
-    response = requests.get("https://"+os.environ['DBRKS_INSTANCE']+".azuredatabricks.net/" + DBRKS_INFO_ENDPOINT, headers=DBRKS_REQ_HEADERS, params=DBRKS_CLUSTER_ID)
+    response = requests.get(
+        f"{os.environ['DATABRICKS_HOST']}{DBRKS_INFO_ENDPOINT}",
+        headers=DBRKS_REQ_HEADERS,
+        data=DBRKS_CLUSTER_ID
+    )
     if response.status_code == 200:
         return json.loads(response.content)
     else:
-        raise Exception(json.loads(response.content))
+        raise Exception(response.json())
 
-def manage_dbrks_cluster_state():
+
+def set_cluster_access():
+    # test for myself
+    pass
+
+
+def manage_dbrks_cluster_state(cluster_id):
+    '''
+    Provide status update on cluster creation based on cluster state
+    returned from get_dbriks_cluster_info
+    :param cluster_id:
+    :return:
+    '''
     await_cluster = True
-    started_terminated_cluster = False
     cluster_restarted = False
     start_time = time.time()
     loop_time = 1200  # 20 Minutes
+    cluster_state = get_dbrks_cluster_info(cluster_id)['state']
     while await_cluster:
         current_time = time.time()
         elapsed_time = current_time - start_time
         if elapsed_time > loop_time:
-            raise Exception('Error: Loop took over {} seconds to run.'.format(loop_time))
-        if get_dbrks_cluster_info()['state'] == 'TERMINATED':
+            raise Exception(f'Error: Loop took over {loop_time} seconds to run.')
+        if cluster_state == 'TERMINATED':
             print('Starting Terminated Cluster')
-            started_terminated_cluster = True
-            raise ValueError("Failed to create cluster, cluster teminated")
-        elif get_dbrks_cluster_info()['state'] == 'RESTARTING':
+            raise ValueError("Failed to create cluster, cluster terminated")
+        elif cluster_state == 'RESTARTING':
             print('Cluster is Restarting')
             time.sleep(60)
-        elif get_dbrks_cluster_info()['state'] == 'PENDING':
+        elif cluster_state == 'PENDING':
             print('Cluster is Pending Start')
             time.sleep(60)
         else:
             print('Cluster is Running')
             await_cluster = False
 
-create_cluster()
-manage_dbrks_cluster_state()
 
+def main_create_cluster():
+    cluster_id = create_cluster('basic-cluster.json')
+    manage_dbrks_cluster_state(json.dumps(cluster_id))
+
+
+if __name__ == '__main__':
+    main_create_cluster()

@@ -1,0 +1,30 @@
+{
+  "num_workers": 0,
+  "cluster_name": "CD_cluster_test",
+  "spark_version": "11.3.x-scala2.12",
+  "spark_conf": {},
+  "aws_attributes": {
+    "first_on_demand": 1,
+    "availability": "SPOT_WITH_FALLBACK",
+    "zone_id": "us-east-1a",
+    "instance_profile_arn": "arn:aws:iam::058144102190:instance-profile/databricks-compute-instance-profile",
+    "spot_bid_price_percent": 100,
+    "ebs_volume_count": 0
+  },
+  "node_type_id": "m5d.large",
+  "driver_node_type_id": "m5d.large",
+  "ssh_public_keys": [],
+  "custom_tags": {
+    "ResourceClass": "SingleNode"
+  },
+  "spark_env_vars": {
+    "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+  },
+  "autotermination_minutes": 45,
+  "enable_elastic_disk": true,
+  "init_scripts": [],
+  "single_user_name": "paul.chung@grindr.com",
+  "enable_local_disk_encryption": false,
+  "data_security_mode": "LEGACY_SINGLE_USER_STANDARD",
+  "runtime_engine": "STANDARD"
+}
