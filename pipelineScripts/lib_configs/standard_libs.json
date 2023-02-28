@@ -1,0 +1,22 @@
+{
+  "libraries": [
+    {
+      "jar": "dbfs:/FileStore/jars/a3cb7d95_f7c8_42a5_badd_ef0a06606683-aws_msk_iam_auth_1_1_4_databricks_all-de2e1.jar"
+    },
+    {
+      "maven": {
+        "coordinates": "org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1"
+      }
+    },
+    {
+      "pypi": {
+        "package": "pyyaml==6.0"
+      }
+    },
+    {
+      "pypi": {
+        "package": "datadog==0.44.0"
+      }
+    }
+  ]
+}
